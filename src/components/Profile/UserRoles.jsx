@@ -8,8 +8,10 @@ const UserRoles = () => {
 
   const updateUserRole = (userId, user) => {
     axios
-      .put(`https://sauti-africa-market-master.herokuapp.com/api/users/${userId}`, user)
+      .put(`https://sauti-marketprice-data.herokuapp.com/api/users/${userId}`, user)
       .then(res => {
+        console.log(`test`)
+        return res
       })
       .catch(err => console.log(err))
   }
