@@ -38,8 +38,10 @@ const SideNav = () => {
   const [playPrice, setPlayPrice] = useState(false)
 
   //Applying scrolling to places of the page
+  
   const scrollToPlay = ref => {
     window.scrollTo(0, ref.current.offsetTop - 40)
+    toggleSidenav(!sidenav) //Closes the menu once scrolling is initiated
   }
   const api = useRef()
   const quick = useRef()
@@ -131,7 +133,7 @@ const SideNav = () => {
             </h5>
             <Highlight language="javascript">
               {
-                'https://sauti-africa-market-master.herokuapp.com/sauti/developer'
+                'https://sauti-marketprice-data.herokuapp.com/sauti/developer'
               }
             </Highlight>
             <h5>Available Endpoints</h5>
@@ -139,14 +141,14 @@ const SideNav = () => {
             <h6>specific list - market, country, source, product</h6>
             <Highlight language="javascript">
               {
-                'https://sauti-africa-market-master.herokuapp.com/sauti/developer/lists/'
+                'https://sauti-marketprice-data.herokuapp.com/sauti/developer/lists/'
               }
             </Highlight>
 
             <h6>filter</h6>
             <Highlight language="javascript">
               {
-                'https://sauti-africa-market-master.herokuapp.com/sauti/developer/filter/'
+                'https://sauti-marketprice-data.herokuapp.com/sauti/developer/filter/'
               }
             </Highlight>
 
@@ -155,7 +157,7 @@ const SideNav = () => {
             </h6>
             <Highlight language="javascript">
               {
-                'https://sauti-africa-market-master.herokuapp.com/sauti/developer/product/latestprice/'
+                'https://sauti-marketprice-data.herokuapp.com/sauti/developer/product/latestprice/'
               }
             </Highlight>
 
@@ -165,7 +167,7 @@ const SideNav = () => {
             </h6>
             <Highlight language="javascript">
               {
-                'https://sauti-africa-market-master.herokuapp.com/sauti/developer/product/pricebymarket/'
+                'https://sauti-marketprice-data.herokuapp.com/sauti/developer/product/pricebymarket/'
               }
             </Highlight>
 
@@ -175,7 +177,7 @@ const SideNav = () => {
             </h6>
             <Highlight language="javascript">
               {
-                'https://sauti-africa-market-master.herokuapp.com/sauti/developer/product/range/'
+                'https://sauti-marketprice-data.herokuapp.com/sauti/developer/product/range/'
               }
             </Highlight>
           </article>
@@ -202,7 +204,7 @@ const SideNav = () => {
               />
             </p>
             <Highlight language="javascript" className="highlight">
-              {'https://sauti-africa-market-master.herokuapp.com/sauti/'}
+              {'https://sauti-marketprice-data.herokuapp.com/sauti/'}
               <br />
               {'developer/lists/?list=[MARKET][COUNTRY][SOURCE][PRODUCT]'}
             </Highlight>
@@ -264,7 +266,7 @@ const SideNav = () => {
               />
             </p>
             <Highlight language="javascript">
-              {'https://sauti-africa-market-master.herokuapp.com/sauti/'}
+              {'https://sauti-marketprice-data.herokuapp.com/sauti/'}
               <br />
               {
                 'developer/filter/?p=[PRODUCT]&market=[MARKET]&pcat=[PRODUCT CATEGORY]'
@@ -346,7 +348,7 @@ const SideNav = () => {
               Returns all records on given product. Pass the query /?product=
             </p>
             <Highlight language="javascript">
-              {'https://sauti-africa-market-master.herokuapp.com/sauti/'}
+              {'https://sauti-marketprice-data.herokuapp.com/sauti/'}
               <br />
               {'developer/product/latestprice/?product=[PRODUCT]'}
             </Highlight>
@@ -393,7 +395,7 @@ const SideNav = () => {
               />
             </p>
             <Highlight language="javascript">
-              {'https://sauti-africa-market-master.herokuapp.com/sauti/'}
+              {'https://sauti-marketprice-data.herokuapp.com/sauti/'}
               <br />
               {
                 'developer/product/pricebymarket/?market=[MARKET]&product=[PRODUCT]'
@@ -461,7 +463,7 @@ const SideNav = () => {
               />
             </p>
             <Highlight language="javascript">
-              {'https://sauti-africa-market-master.herokuapp.com/sauti/'}
+              {'https://sauti-marketprice-data.herokuapp.com/sauti/'}
               <br />
               {
                 'developer/product/range/?product=[PRODUCT]&startDate=[START DATE]&endDate=[END DATE]&count=[COUNT]&next=[NEXT]'
