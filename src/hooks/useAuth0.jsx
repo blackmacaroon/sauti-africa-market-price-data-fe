@@ -87,8 +87,14 @@ export const Auth0Provider = ({
   const getRole = () => axios
     .post(`https://sauti-marketprice-data.herokuapp.com/api/users/`, user)
     .then(res => {
+      console.log(`getRole: `, res)
       const user = res.data;
-      return !!user === true && setRole({ ...user.app_metadata })
+
+      if(role === undefined || role === null){
+        return setRole({ ...user.app_metadata })
+      }
+      
+      // return !!user === true && setRole({ ...user.app_metadata })
     })
     .catch(err => console.log(err))
 

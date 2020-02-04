@@ -11,13 +11,13 @@ const GridPage = props => {
 
   return (
     <div className="next-steps my-5">
-      {token ? (
-        <Grid token={token} />
-      ) : loading ? (
-        <Loading grid={true} />
-      ) : (
-        <Protected />
-      )}
+      {
+        !!token === false || loading
+          ? <Loading grid={true} />
+          : token && !!token === true
+            ? <Grid token={token} />
+            : <Protected />
+      }
     </div>
   )
 }

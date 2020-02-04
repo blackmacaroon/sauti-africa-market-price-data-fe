@@ -23,6 +23,14 @@ const { RangePicker } = DatePicker
 const NOCACHE = true
 
 const Grid = ({ token }) => {
+
+  // * LOCALSTORAGE HANDLER
+  const manageLS = (method, name = '', data = undefined) => {
+    if (method === 'get' && name) return JSON.parse(localStorage.getItem(name))
+    if (method === 'set' && data && name) return localStorage.setItem(name, JSON.stringify(data))
+    if (method === 'clear') return localStorage.clear()
+  }
+
   const [store, dispatch] = useReducer(reducer, initialState)
   const { columnDefs, rowData, gridStyle } = store
   const [err, setErr] = useState(false)
@@ -37,20 +45,8 @@ const Grid = ({ token }) => {
   const [pCatQuery, setPCatQuery] = useState()
   const [pAggQuery, setPAggQuery] = useState()
   const [productQuery, setProductQuery] = useState()
-  const [next, setNext] = useState(
-    localStorage.getItem('next') ? JSON.parse(localStorage.getItem('next')) : []
-  )
-  const [prev, setPrev] = useState(
-    localStorage.getItem('prev') ? JSON.parse(localStorage.getItem('prev')) : []
-  )
-  const [count, setCount] = useState(
-    localStorage.getItem('count')
-      ? JSON.parse(localStorage.getItem('count'))
-      : 0
-  )
-  const [page, setPage] = useState(
-    localStorage.getItem('page') ? JSON.parse(localStorage.getItem('page')) : 0
-  )
+  const [currentPage, setCurrentPage] = useState()
+  const [pageCount, setPageCount] = useState(manageLS('get', 'page') ? manageLS('get', 'page').next - 1 : 0)
   const [countries, setCountries] = useState([])
   const [markets, setMarkets] = useState([])
   const [sources, setSources] = useState([])
@@ -68,13 +64,39 @@ const Grid = ({ token }) => {
   const [spinner, setSpinner] = useState(false)
   const [exportCSV, setExportCSV] = useState(null)
 
+  // * FOR TRAVERSING DATA USING SELECTED OPTIONS ON GRID
+  const dateRangeQuery =
+    dateRanges && dateRanges[0]
+      ? `&startDate=${dateRanges[0].format(
+        'YYYY-MM-DD'
+      )}&endDate=${dateRanges[1].format('YYYY-MM-DD')}`
+      : ''
+
+  // * QUERY TEMPLATE FOR UPDATING THE GRID DATA UPON SELECTED FILTERS
+  const query = `/sauti/client/?currency=${currency || 'USD'}${countryQuery ||
+    ''}${marketQuery || ''}${pCatQuery || ''}${pAggQuery ||
+    ''}${productQuery || ''}${dateRangeQuery}&next=${manageLS('get', 'data') ? manageLS('get', 'data').next : ''}`
+
+
   useEffect(() => {
+    console.log('TOKEN ' + token)
+    const setInitialData = async () => {
+      const query = `https://sauti-marketprice-data.herokuapp.com/sauti/client/?currency=${currency ||
+        'USD'}${countryQuery || ''}${marketQuery || ''}${pCatQuery ||
+        ''}${pAggQuery || ''}${productQuery || ''}${dateRangeQuery}`
+
+      return await axiosWithAuth([token]).get(query)
+        .then(res => res.data.pageCount)
+        .then(res => setPageCount(res))
+    }
+
+    if (!!pageCount === false || isNaN(pageCount)) setInitialData()
+
     setSpinner('One moment please...') // Overlay on top of dropdowns while superlist is populating the dropdown menu options
     restoreQuery()
-    const cachedRowData = localStorage.getItem('rowdata')
-    if (cachedRowData) {
-      dispatch({ type: 'SET_ROW_DATA', payload: JSON.parse(cachedRowData) })
-    }
+    const cachedRowData = manageLS('get', 'rowdata')
+    if (cachedRowData) dispatch({ type: 'SET_ROW_DATA', payload: cachedRowData })
+
     axiosWithAuth([token])
       .get('/sauti/client/superlist')
       .then(res => {
@@ -205,7 +227,7 @@ const Grid = ({ token }) => {
 
   function restoreQuery() {
     // Restore a saved query string from localstorage and parse into dropdown menu options for prepopulating most recent search
-    const query = localStorage.getItem('q')
+    const query = manageLS('get', 'q')
     if (query) {
       const {
         c = [],
@@ -275,10 +297,7 @@ const Grid = ({ token }) => {
     dropdownHandler([], setPAggs, setPAggQuery, 'pagg')
     dropdownHandler('USD', setCurrency, null, 'cur')
     datesHandler([])
-    setPage(0)
-    setCount(0)
-    setPrev([])
-    setNext([])
+    setCurrentPage(0)
     dispatch({ type: 'SET_ROW_DATA', payload: [] })
     setSpinner(false)
   }
@@ -297,45 +316,28 @@ const Grid = ({ token }) => {
 
   // For all API calls except CSV request, axiosWithAuth wraps a caching layer. If a query result is found in the cache, it will be returned without hitting the backend
 
-  // called when a user pages forward
+  // * NEXT API CALL
   const nextApiCall = async () => {
-    const dateRangeQuery =
-      dateRanges && dateRanges[0]
-        ? `&startDate=${dateRanges[0].format(
-          'YYYY-MM-DD'
-        )}&endDate=${dateRanges[1].format('YYYY-MM-DD')}`
-        : ''
     setErr(false)
-    // next values (the top value of the next page (1 page forward) that's passed back with each page) are stored as an array.
-    // nextCursor will be the latest value in the next array and will be passed to the api call so the api returns a page with
-    // results whose date is earlier than the date in the nextCursor (or, if there are identical dates, it will return results
-    //whose date is equal but id is less than or equal than the id in the nextCursor)
-    let nextCursor = null
-    let n = next[next.length - 1]
-    if (next) nextCursor = n
-    const query = `/sauti/client/?currency=${currency || 'USD'}${countryQuery ||
-      ''}${marketQuery || ''}${sourceQuery || ''}${pCatQuery || ''}${pAggQuery ||
-      ''}${productQuery || ''}${dateRangeQuery}&next=${nextCursor}`
-    localStorage.setItem('q', query) // Stored in local storage to later restore parameters if user reloads page
+    // Stored in local storage to later restore parameters if user reloads page
+    manageLS('set', 'q', query)
+
     axiosWithAuth([token])
       .get(query)
       .then(async res => {
+        console.log(res)
         if (res.error) throw new Error(res.error)
         dispatch({ type: 'SET_ROW_DATA', payload: res.data.records })
         setSpinner(false)
 
-        // checks that the page change won't exceed the page count
-        const p = page
-        const currentPage =
-          typeof p === 'number' && p + 1 <= count ? p + 1 : count
+        await setCurrentPage(res.data.next - 1)
 
-        await setPrev([...prev, res.data.prev])
-        await setNext([...next, res.data.next])
-        await setPage(currentPage)
-        // Stored in local storage to later restore parameters if user reloads page
-        localStorage.setItem('prev', JSON.stringify([...prev, res.data.prev]))
-        localStorage.setItem('next', JSON.stringify([...next, res.data.next]))
-        localStorage.setItem('page', JSON.stringify(currentPage))
+        // * STORE DATA IN LOCALSTORAGE IF RESULTS EXISTS
+        if (res) {
+          manageLS('set', 'page', res.data.next - 1)
+          manageLS('set', 'data', { ...res.data })
+          console.log('NEXT BUTTON CALL', manageLS('get', 'data'))
+        }
       })
       .catch(e => {
         setErr(`${e.message}`)
@@ -343,48 +345,62 @@ const Grid = ({ token }) => {
       })
   }
 
-  const prevApiCall = async () => {
-    const dateRangeQuery =
-      dateRanges && dateRanges[0]
-        ? `&startDate=${dateRanges[0].format(
-          'YYYY-MM-DD'
-        )}&endDate=${dateRanges[1].format('YYYY-MM-DD')}`
-        : ''
+  // * API CALL
+  const apiCall = async () => {
+    const query = `https://sauti-marketprice-data.herokuapp.com/sauti/client/?currency=${currency ||
+      'USD'}${countryQuery || ''}${sourceQuery || ''}${marketQuery || ''}${pCatQuery ||
+      ''}${pAggQuery || ''}${productQuery || ''}${dateRangeQuery}`
 
     setErr(false)
 
-    // checks that the previous page will not be less than 1
-    let p = page
-    const currentPage = typeof p === 'number' && p > 1 ? p - 1 : 1
-    await setPage(currentPage)
+    // Stored in local storage to later restore parameters if user reloads page
+    manageLS('set', 'q', query)
 
-    localStorage.setItem('page', JSON.stringify(currentPage))
-    let nextCursor = null
-    let nextPage = null
-    //When thinking about going back a page, the nextCursor (the value passed into the query) needs to be the
-    //concatenation of the date and id of the result at the top of the desired page. After each call, the api returns
-    //a prev value (the result at the top of the current page) and a next value (result at the top of the next page).
-    //These are both stored in arrays in state. If we're on page 6 and want to go back to page 5, we need the top of page 5,
-    //which is stored in the prev value for the 5th page, which is at the 4th index value because of zero-based indexing.
-    //We pass in this value to the next query parameter, and we'll get the 5th page.
-    if (prev && page) nextPage = prev[page - 2]
-    if (nextPage) nextCursor = nextPage
-    const query = `/sauti/client/?currency=${currency || 'USD'}${countryQuery ||
-      ''}${marketQuery || ''}${sourceQuery || ''}${pCatQuery || ''}${pAggQuery ||
-      ''}${productQuery || ''}${dateRangeQuery}&next=${nextCursor}`
-    localStorage.setItem('q', query) // Stored in local storage to later restore parameters if user reloads page
     axiosWithAuth([token])
       .get(query)
       .then(async res => {
+        if (res) console.log(res)
         if (res.error) throw new Error(res.error)
         dispatch({ type: 'SET_ROW_DATA', payload: res.data.records })
         setSpinner(false)
-        await setNext([...next, res.data.next])
-        await setPrev([...prev, res.data.prev])
-        await setNext([...next, res.data.next])
+
         // Stored in local storage to later restore parameters if user reloads page
-        localStorage.setItem('prev', JSON.stringify([...prev, res.data.prev]))
-        localStorage.setItem('next', JSON.stringify([...next, res.data.next]))
+        if (res) {
+          console.log(res.data.next - 1)
+          manageLS('set', 'page', res.data.next - 1)
+          manageLS('set', 'data', { ...res.data })
+          console.log('UPDATE BUTTON CALL', manageLS('get', 'data'))
+        }
+      })
+      .catch(e => {
+        setErr(`${e.message}`)
+        setSpinner(false)
+      })
+  }
+
+  // * PREVIOUS PAGE API CALL
+  const prevApiCall = async () => {
+    const query = `/sauti/client/?currency=${currency || 'USD'}${countryQuery ||
+      ''}${marketQuery || ''}${pCatQuery || ''}${sourceQuery || ''}${pAggQuery ||
+      ''}${productQuery || ''}${dateRangeQuery}&next=${manageLS('get', 'data') ? manageLS('get', 'data').prev : ''}`
+    setErr(false)
+
+    // checks that the previous page will not be less than 
+    setCurrentPage(
+      currentPage === 'number' && currentPage > 1 && manageLS('get', 'data').next - 1
+    )
+
+    // * STORE DATA
+    manageLS('set', 'page', currentPage)
+    manageLS('set', 'q', query)
+
+    axiosWithAuth([token])
+      .get(query)
+      .then(async res => {
+        if (res) console.log('PREVIOUS CALL', res)
+        dispatch({ type: 'SET_ROW_DATA', payload: res.data.records })
+        setSpinner(false)
+        manageLS('set', 'data', { ...res.data })
       })
       .catch(e => {
         setSpinner(false)
@@ -393,17 +409,11 @@ const Grid = ({ token }) => {
     setSpinner(false)
   }
 
-  // Call for Export All CSV. Uncached
+  // * CSV CALL TO EXPORT CSV
   const apiCallForCSV = async () => {
-    const dateRangeQuery =
-      dateRanges && dateRanges[0]
-        ? `&startDate=${dateRanges[0].format(
-          'YYYY-MM-DD'
-        )}&endDate=${dateRanges[1].format('YYYY-MM-DD')}`
-        : ''
     setErr(false)
     const query = `https://sauti-marketprice-data.herokuapp.com/sauti/client/export/?currency=${currency ||
-      'USD'}${countryQuery || ''}${marketQuery || ''}${sourceQuery || ''}${pCatQuery ||
+      'USD'}${countryQuery || ''}${sourceQuery || ''}${marketQuery || ''}${pCatQuery ||
       ''}${pAggQuery || ''}${productQuery || ''}${dateRangeQuery}`
     axiosWithAuth([token], NOCACHE)
       .get(query)
@@ -411,46 +421,6 @@ const Grid = ({ token }) => {
         setSpinner(false)
         if (res.error) throw new Error(res.error)
         window.location.href = res.config.url
-      })
-      .catch(e => {
-        setErr(`${e.message}`)
-        setSpinner(false)
-      })
-  }
-
-  const apiCall = async () => {
-    const dateRangeQuery =
-      dateRanges && dateRanges[0]
-        ? `&startDate=${dateRanges[0].format(
-          'YYYY-MM-DD'
-        )}&endDate=${dateRanges[1].format('YYYY-MM-DD')}`
-        : ''
-    setErr(false)
-    const query = `/sauti/client/?currency=${currency || 'USD'}${countryQuery ||
-      ''}${marketQuery || ''}${sourceQuery || ''}${pCatQuery || ''}${pAggQuery ||
-      ''}${productQuery || ''}${dateRangeQuery}`
-    localStorage.setItem('q', query) // Stored in local storage to later restore parameters if user reloads page
-    axiosWithAuth([token])
-      .get(query)
-      .then(async res => {
-        if (res.error) throw new Error(res.error)
-        const currentPage = 1
-        dispatch({ type: 'SET_ROW_DATA', payload: res.data.records })
-        setSpinner(false)
-
-        setNext([...next, res.data.next])
-
-        let newCount = Math.ceil(parseInt(res.data.count[0]['count(*)']) / 30)
-
-        await setPrev([...prev, res.data.prev])
-        await setPage(currentPage)
-        await setCount(newCount)
-        // Stored in local storage to later restore parameters if user reloads page
-        localStorage.setItem('rowdata', JSON.stringify(res.data.records))
-        localStorage.setItem('next', JSON.stringify([...next, res.data.next]))
-        localStorage.setItem('prev', JSON.stringify([...prev, res.data.prev]))
-        localStorage.setItem('page', JSON.stringify(currentPage))
-        localStorage.setItem('count', newCount)
       })
       .catch(e => {
         setErr(`${e.message}`)
@@ -466,8 +436,7 @@ const Grid = ({ token }) => {
             <LoadingOverlay
               active={spinner && spinner !== 'Getting data...'}
               spinner
-              text={spinner}
-            >
+              text={spinner}>
               <Form>
                 <Dropdown
                   placeholder="Countries"
@@ -580,8 +549,7 @@ const Grid = ({ token }) => {
                       onClick={() => {
                         apiCallForCSV()
                         setSpinner('This may take a while, please wait...')
-                      }}
-                    >
+                      }}>
                       Export All Data as CSV
                     </Button>
                   </>
@@ -607,53 +575,48 @@ const Grid = ({ token }) => {
                 domLayout="autoHeight"
                 reactNext={true}
                 // events
-                onGridReady={onGridReady}
-              >
+                onGridReady={onGridReady}>
                 {/* On load of the grid, check for localstoragePut the ability to save RowData into local storage*/}
               </AgGridReact>
             </div>
           </LoadingOverlay>
 
-          {!page ? (
+          {!currentPage ? (
             <Button disabled>{'<'}</Button>
-          ) : page === 2 ? (
+          ) : currentPage === 2 ? (
             <Button
               onClick={() => {
                 apiCall()
                 setSpinner('Getting data...')
-              }}
-            >
+              }}>
               {'<'}
             </Button>
-          ) : page === 1 ? (
+          ) : currentPage === 1 ? (
             <Button disabled>{'<'}</Button>
           ) : (
                   <Button
                     onClick={() => {
                       prevApiCall()
                       setSpinner('Getting data...')
-                    }}
-                  >
+                    }}>
                     {'<'}
                   </Button>
                 )}
-          {next && page < count ? (
+          {manageLS('get', 'data').next && manageLS('get', 'data').next - 1 < pageCount ? (
             <Button
               onClick={() => {
                 nextApiCall()
                 setSpinner('Getting data...')
-              }}
-            >{`>`}</Button>
+              }}>{`>`}</Button>
           ) : (
               <Button
                 disabled
                 onClick={() => {
                   nextApiCall()
                   setSpinner('Getting data...')
-                }}
-              >{`>`}</Button>
+                }}>{`>`}</Button>
             )}
-          {page && count > 0 ? <span>{`${page} of ${count}`}</span> : null}
+          {currentPage && pageCount > 0 ? <span>{`${manageLS('get', 'page')} of ${pageCount}`}</span> : null}
         </div>
       </GridContext.Provider>
     </Container>
