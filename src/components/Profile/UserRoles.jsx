@@ -10,6 +10,8 @@ const UserRoles = () => {
     axios
       .put(`https://sauti-marketprice-data.herokuapp.com/api/users/${userId}`, user)
       .then(res => {
+        console.log(`test`)
+        return res
       })
       .catch(err => console.log(err))
   }
