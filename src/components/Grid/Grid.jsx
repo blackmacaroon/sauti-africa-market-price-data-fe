@@ -81,7 +81,7 @@ const Grid = ({ token }) => {
   useEffect(() => {
     console.log('TOKEN ' + token)
     const setInitialData = async () => {
-      const query = `https://sauti-marketprice-data.herokuapp.com/sauti/client/?currency=${currency ||
+      const query = `https://sauti-africa-market-staging-3.herokuapp.com/sauti/client/?currency=${currency ||
         'USD'}${countryQuery || ''}${marketQuery || ''}${pCatQuery ||
         ''}${pAggQuery || ''}${productQuery || ''}${dateRangeQuery}`
 
@@ -347,7 +347,7 @@ const Grid = ({ token }) => {
 
   // * API CALL
   const apiCall = async () => {
-    const query = `https://sauti-marketprice-data.herokuapp.com/sauti/client/?currency=${currency ||
+    const query = `https://sauti-africa-market-staging-3.herokuapp.com/sauti/client/?currency=${currency ||
       'USD'}${countryQuery || ''}${sourceQuery || ''}${marketQuery || ''}${pCatQuery ||
       ''}${pAggQuery || ''}${productQuery || ''}${dateRangeQuery}`
 
@@ -412,7 +412,7 @@ const Grid = ({ token }) => {
   // * CSV CALL TO EXPORT CSV
   const apiCallForCSV = async () => {
     setErr(false)
-    const query = `https://sauti-marketprice-data.herokuapp.com/sauti/client/export/?currency=${currency ||
+    const query = `https://sauti-africa-market-staging-3.herokuapp.com/sauti/client/export/?currency=${currency ||
       'USD'}${countryQuery || ''}${sourceQuery || ''}${marketQuery || ''}${pCatQuery ||
       ''}${pAggQuery || ''}${productQuery || ''}${dateRangeQuery}`
     axiosWithAuth([token], NOCACHE)
